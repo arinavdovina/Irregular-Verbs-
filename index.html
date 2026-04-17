@@ -14,6 +14,8 @@
             --hit: #ff3e3e;
             --miss: #ffffff44;
             --ship: #00f2ffaa;
+            --correct: #2ecc71;
+            --wrong: #e74c3c;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -29,7 +31,6 @@
             overflow-x: hidden;
         }
 
-        /* Radar Scanning Effect */
         .radar-bg {
             position: fixed;
             top: 50%;
@@ -111,20 +112,17 @@
         }
 
         .cell:hover { background: rgba(0, 242, 255, 0.2); }
-
         .cell.hit { background: rgba(255, 62, 62, 0.3); }
         .cell.hit::after { content: '×'; color: var(--hit); font-size: 1.5rem; font-weight: bold; }
-        
         .cell.miss { background: rgba(255, 255, 255, 0.1); }
         .cell.miss::after { content: '•'; color: var(--miss); font-size: 1.2rem; }
-
         .cell.ship { background: var(--ship); }
 
         /* Modal / Question Overlay */
         #modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 11, 20, 0.9);
+            background: rgba(5, 11, 20, 0.95);
             display: none;
             justify-content: center;
             align-items: center;
@@ -142,8 +140,6 @@
             text-align: center;
             box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);
         }
-
-        .question-card h2 { margin-bottom: 20px; color: var(--primary); }
 
         .options-grid {
             display: grid;
@@ -163,11 +159,38 @@
             transition: all 0.2s;
         }
 
-        .option-btn:hover {
+        /* Feedback Colors */
+        .option-btn.correct { background: var(--correct) !important; border-color: var(--correct); color: #fff; }
+        .option-btn.wrong { background: var(--wrong) !important; border-color: var(--wrong); color: #fff; }
+
+        /* Scaffolding Styles */
+        .scaffolding {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-left: 4px solid var(--wrong);
+            text-align: left;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .scaffolding h3 { color: var(--primary); margin-bottom: 5px; font-size: 1rem; }
+        .scaffolding p { font-size: 1.2rem; letter-spacing: 1px; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-continue {
+            margin-top: 20px;
+            padding: 10px 25px;
             background: var(--primary);
-            color: var(--bg);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.4);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none; /* Shown only after answer */
+            width: 100%;
         }
 
         .status-panel {
@@ -178,8 +201,6 @@
             text-align: center;
             min-width: 250px;
         }
-
-        .controls { margin-bottom: 20px; }
 
         .btn-start {
             padding: 12px 30px;
@@ -209,7 +230,7 @@
 
     <header>
         <h1>Naval Battle</h1>
-        <p>A2 Irregular Verbs Edition</p>
+        <p>Irregular Verbs: Master the Fleet</p>
     </header>
 
     <div class="controls">
@@ -233,72 +254,30 @@
     </div>
 
     <div id="modal-overlay">
-        <div class="question-card" id="question-card">
-            </div>
+        <div class="question-card" id="question-card"></div>
     </div>
 
     <script>
-        // 50 A2 Irregular Verb Questions
+        // Verbs Database with scaffolding data
         const verbsDB = [
-            { v: "be", q: "What is the Past Simple of 'be' (plural)?", a: "were", o: ["was", "were", "been", "is"] },
-            { v: "become", q: "Past Simple of 'become'?", a: "became", o: ["become", "becoming", "became", "becomes"] },
-            { v: "begin", q: "Past Simple of 'begin'?", a: "began", o: ["begun", "began", "beginned", "begins"] },
-            { v: "break", q: "Past Simple of 'break'?", a: "broke", o: ["broken", "breaked", "brake", "broke"] },
-            { v: "bring", q: "Past Simple of 'bring'?", a: "brought", o: ["brang", "brought", "bringed", "broughten"] },
-            { v: "build", q: "Past Simple of 'build'?", a: "built", o: ["builded", "built", "builds", "building"] },
-            { v: "buy", q: "Past Simple of 'buy'?", a: "bought", o: ["bought", "buyed", "boughten", "boughts"] },
-            { v: "catch", q: "Past Simple of 'catch'?", a: "caught", o: ["catched", "caught", "caughten", "catchy"] },
-            { v: "choose", q: "Past Simple of 'choose'?", a: "chose", o: ["choosed", "chosen", "chose", "choose"] },
-            { v: "come", q: "Past Simple of 'come'?", a: "came", o: ["comed", "came", "coming", "comes"] },
-            { v: "do", q: "Past Simple of 'do'?", a: "did", o: ["done", "doed", "did", "does"] },
-            { v: "drink", q: "Past Simple of 'drink'?", a: "drank", o: ["drunk", "drank", "drinked", "drinks"] },
-            { v: "drive", q: "Past Simple of 'drive'?", a: "drove", o: ["drived", "driven", "drove", "drives"] },
-            { v: "eat", q: "Past Simple of 'eat'?", a: "ate", o: ["eaten", "eated", "ate", "eats"] },
-            { v: "fall", q: "Past Simple of 'fall'?", a: "fell", o: ["fallen", "felled", "fell", "falls"] },
-            { v: "feel", q: "Past Simple of 'feel'?", a: "felt", o: ["felt", "feeled", "feel", "feels"] },
-            { v: "find", q: "Past Simple of 'find'?", a: "found", o: ["finded", "found", "founden", "finds"] },
-            { v: "fly", q: "Past Simple of 'fly'?", a: "flew", o: ["flied", "flow", "flew", "flyed"] },
-            { v: "forget", q: "Past Simple of 'forget'?", a: "forgot", o: ["forgotten", "forgets", "forgot", "forgeted"] },
-            { v: "get", q: "Past Simple of 'get'?", a: "got", o: ["got", "getted", "gotten", "gets"] },
-            { v: "give", q: "Past Simple of 'give'?", a: "gave", o: ["given", "gave", "gived", "gives"] },
-            { v: "go", q: "Past Simple of 'go'?", a: "went", o: ["gone", "goed", "went", "goes"] },
-            { v: "have", q: "Past Simple of 'have'?", a: "had", o: ["haved", "had", "hads", "having"] },
-            { v: "hear", q: "Past Simple of 'hear'?", a: "heard", o: ["heared", "heard", "hears", "herds"] },
-            { v: "keep", q: "Past Simple of 'keep'?", a: "kept", o: ["keeped", "kept", "keeps", "keeping"] },
-            { v: "know", q: "Past Simple of 'know'?", a: "knew", o: ["known", "knowed", "knew", "knows"] },
-            { v: "leave", q: "Past Simple of 'leave'?", a: "left", o: ["leaved", "left", "leften", "leaves"] },
-            { v: "lose", q: "Past Simple of 'lose'?", a: "lost", o: ["losed", "lost", "lossen", "loses"] },
-            { v: "make", q: "Past Simple of 'make'?", a: "made", o: ["maked", "maden", "made", "makes"] },
-            { v: "meet", q: "Past Simple of 'meet'?", a: "met", o: ["met", "meeted", "meet", "meets"] },
-            { v: "pay", q: "Past Simple of 'pay'?", a: "paid", o: ["payed", "paid", "pays", "paying"] },
-            { v: "read", q: "Past Simple of 'read'?", a: "read", o: ["read", "readed", "red", "reads"] },
-            { v: "run", q: "Past Simple of 'run'?", a: "ran", o: ["runned", "run", "ran", "runs"] },
-            { v: "say", q: "Past Simple of 'say'?", a: "said", o: ["sayed", "said", "says", "saying"] },
-            { v: "see", q: "Past Simple of 'see'?", a: "saw", o: ["seen", "seed", "saw", "sees"] },
-            { v: "sell", q: "Past Simple of 'sell'?", a: "sold", o: ["selled", "sold", "solds", "selling"] },
-            { v: "send", q: "Past Simple of 'send'?", a: "sent", o: ["sent", "sended", "sends", "sending"] },
-            { v: "sing", q: "Past Simple of 'sing'?", a: "sang", o: ["sung", "sang", "singed", "sings"] },
-            { v: "sit", q: "Past Simple of 'sit'?", a: "sat", o: ["sitted", "sit", "sat", "sits"] },
-            { v: "sleep", q: "Past Simple of 'sleep'?", a: "slept", o: ["sleeped", "slept", "sleeps", "sleeping"] },
-            { v: "speak", q: "Past Simple of 'speak'?", a: "spoke", o: ["spoken", "speaked", "spoke", "speaks"] },
-            { v: "spend", q: "Past Simple of 'spend'?", a: "spent", o: ["spended", "spent", "spends", "spending"] },
-            { v: "swim", q: "Past Simple of 'swim'?", a: "swam", o: ["swum", "swam", "swimmed", "swims"] },
-            { v: "take", q: "Past Simple of 'take'?", a: "took", o: ["taken", "taked", "took", "takes"] },
-            { v: "teach", q: "Past Simple of 'teach'?", a: "taught", o: ["teached", "taught", "taughten", "teaches"] },
-            { v: "tell", q: "Past Simple of 'tell'?", a: "told", o: ["telled", "told", "tells", "telling"] },
-            { v: "think", q: "Past Simple of 'think'?", a: "thought", o: ["thinked", "thought", "thoughts", "thinking"] },
-            { v: "understand", q: "Past Simple of 'understand'?", a: "understood", o: ["understood", "understanded", "understands", "understanding"] },
-            { v: "wear", q: "Past Simple of 'wear'?", a: "wore", o: ["weared", "worn", "wore", "wears"] },
-            { v: "write", q: "Past Simple of 'write'?", a: "wrote", o: ["writed", "written", "wrote", "writes"] }
+            { v: "be", q: "Past Simple of 'be' (plural)?", a: "were", o: ["was", "were", "been", "is"], forms: "be - was/were - been", translate: "быть" },
+            { v: "become", q: "Past Simple of 'become'?", a: "became", o: ["become", "becoming", "became", "becomes"], forms: "become - became - become", translate: "становиться" },
+            { v: "begin", q: "Past Simple of 'begin'?", a: "began", o: ["begun", "began", "beginned", "begins"], forms: "begin - began - begun", translate: "начинать" },
+            { v: "break", q: "Past Simple of 'break'?", a: "broke", o: ["broken", "breaked", "brake", "broke"], forms: "break - broke - broken", translate: "ломать" },
+            { v: "bring", q: "Past Simple of 'bring'?", a: "brought", o: ["brang", "brought", "bringed", "broughten"], forms: "bring - brought - brought", translate: "приносить" },
+            { v: "buy", q: "Past Simple of 'buy'?", a: "bought", o: ["bought", "buyed", "boughten", "boughts"], forms: "buy - bought - bought", translate: "покупать" },
+            { v: "come", q: "Past Simple of 'come'?", a: "came", o: ["comed", "came", "coming", "comes"], forms: "come - came - come", translate: "приходить" },
+            { v: "do", q: "Past Simple of 'do'?", a: "did", o: ["done", "doed", "did", "does"], forms: "do - did - done", translate: "делать" },
+            { v: "eat", q: "Past Simple of 'eat'?", a: "ate", o: ["eaten", "eated", "ate", "eats"], forms: "eat - ate - eaten", translate: "есть" },
+            { v: "go", q: "Past Simple of 'go'?", a: "went", o: ["gone", "goed", "went", "goes"], forms: "go - went - gone", translate: "идти" }
+            // Можно добавить больше глаголов по аналогии
         ];
 
         let questions = [];
         let playerBoard = [], enemyBoard = [];
-        let playerShips = [], enemyShips = [];
         let gameActive = false;
         let pendingShot = null;
 
-        // Fisher-Yates Shuffle
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -313,7 +292,6 @@
             for (let i = 0; i < 100; i++) {
                 const cell = document.createElement('div');
                 cell.classList.add('cell');
-                cell.dataset.index = i;
                 if (containerId === 'enemy-grid') {
                     cell.addEventListener('click', () => handlePlayerShot(i));
                 }
@@ -323,7 +301,6 @@
         }
 
         function placeShipsRandomly(board, shipSizes) {
-            const ships = [];
             shipSizes.forEach(size => {
                 let placed = false;
                 while (!placed) {
@@ -331,9 +308,7 @@
                     const row = Math.floor(Math.random() * 10);
                     const col = Math.floor(Math.random() * (10 - (isHorizontal ? size : 0)));
                     const startPos = isHorizontal ? row * 10 + col : col * 10 + row;
-                    
                     if (!isHorizontal && row + size > 10) continue;
-
                     let collision = false;
                     const shipIndices = [];
                     for (let i = 0; i < size; i++) {
@@ -341,21 +316,11 @@
                         if (board[idx].hasShip) { collision = true; break; }
                         shipIndices.push(idx);
                     }
-
                     if (!collision) {
                         shipIndices.forEach(idx => board[idx].hasShip = true);
-                        ships.push(shipIndices);
                         placed = true;
                     }
                 }
-            });
-            return ships;
-        }
-
-        function renderShips(boardId, boardData) {
-            const cells = document.querySelectorAll(`#${boardId} .cell`);
-            boardData.forEach((data, i) => {
-                if (data.hasShip) cells[i].classList.add('ship');
             });
         }
 
@@ -363,117 +328,121 @@
             questions = shuffle([...verbsDB]);
             playerBoard = Array(100).fill(null).map(() => ({hasShip: false, hit: false}));
             enemyBoard = Array(100).fill(null).map(() => ({hasShip: false, hit: false}));
-            
             createGrid('player-grid', playerBoard);
             createGrid('enemy-grid', enemyBoard);
-            
             const shipSet = [4, 3, 3, 2, 2, 1];
-            playerShips = placeShipsRandomly(playerBoard, shipSet);
-            enemyShips = placeShipsRandomly(enemyBoard, shipSet);
+            placeShipsRandomly(playerBoard, shipSet);
+            placeShipsRandomly(enemyBoard, shipSet);
             
-            renderShips('player-grid', playerBoard);
-            
+            // Render player ships
+            const pCells = document.querySelectorAll('#player-grid .cell');
+            playerBoard.forEach((data, i) => { if(data.hasShip) pCells[i].classList.add('ship'); });
+
             gameActive = true;
             document.getElementById('turn-info').innerText = "Status: Enemy detected. Select target.";
         }
 
         function handlePlayerShot(index) {
             if (!gameActive || enemyBoard[index].hit) return;
-            if (questions.length === 0) {
-                alert("Out of questions! Shuffling database...");
-                questions = shuffle([...verbsDB]);
-            }
             pendingShot = index;
             showQuestion();
         }
 
         function showQuestion() {
-            const question = questions[0]; // Use first question
+            if (questions.length === 0) questions = shuffle([...verbsDB]);
+            const question = questions[0];
             const overlay = document.getElementById('modal-overlay');
             const card = document.getElementById('question-card');
-            
-            overlay.style.display = 'flex';
-            
             const shuffledOptions = shuffle([...question.o]);
             
+            overlay.style.display = 'flex';
             card.innerHTML = `
-                <h2>Identify the Verb</h2>
+                <h2>Target Calibration</h2>
                 <p style="font-size: 1.3rem; margin-bottom: 20px;">${question.q}</p>
-                <div class="options-grid">
+                <div class="options-grid" id="options-container">
                     ${shuffledOptions.map(opt => `
-                        <button class="option-btn" onclick="checkAnswer('${opt}', '${question.a}')">${opt}</button>
+                        <button class="option-btn" onclick="processAnswer(this, '${opt}', '${question.a}')">${opt}</button>
                     `).join('')}
                 </div>
+                <div id="scaffold-area"></div>
+                <button class="btn-continue" id="btn-continue" onclick="closeQuestion()">Continue Mission</button>
             `;
         }
 
-        function checkAnswer(selected, correct) {
-            const overlay = document.getElementById('modal-overlay');
-            overlay.style.display = 'none';
+        function processAnswer(btn, selected, correct) {
+            const currentQ = questions[0];
+            const buttons = document.querySelectorAll('.option-btn');
+            const scaffoldArea = document.getElementById('scaffold-area');
+            const continueBtn = document.getElementById('btn-continue');
             
-            const isCorrect = selected === correct;
-            const index = pendingShot;
-            const cell = document.querySelectorAll('#enemy-grid .cell')[index];
-            
-            // Remove the used question from the pool
-            questions.shift();
+            // Disable all buttons
+            buttons.forEach(b => b.removeAttribute('onclick'));
 
-            if (isCorrect) {
-                enemyBoard[index].hit = true;
-                if (enemyBoard[index].hasShip) {
-                    cell.classList.add('hit');
-                    document.getElementById('msg').innerText = "DIRECT HIT! Intelligence was accurate.";
-                    checkWin();
-                } else {
-                    cell.classList.add('miss');
-                    document.getElementById('msg').innerText = "Target missed. Intelligence confirmed water.";
-                }
-            } else {
-                // Automatical miss on wrong answer
-                enemyBoard[index].hit = true;
-                cell.classList.add('miss');
-                document.getElementById('msg').innerText = "CALIBRATION ERROR! The shot went wide.";
+            const isCorrect = selected === correct;
+            
+            // Highlight Correct / Wrong
+            buttons.forEach(b => {
+                if (b.innerText === correct) b.classList.add('correct');
+                if (b === btn && !isCorrect) b.classList.add('wrong');
+            });
+
+            if (!isCorrect) {
+                scaffoldArea.innerHTML = `
+                    <div class="scaffolding">
+                        <h3>REMEMBER:</h3>
+                        <p><strong>${currentQ.forms}</strong></p>
+                        <p style="color: #ccc; font-size: 0.9rem;">Перевод: ${currentQ.translate}</p>
+                    </div>
+                `;
             }
 
-            if (gameActive) setTimeout(enemyTurn, 1000);
+            // Execute Shot Logic
+            const index = pendingShot;
+            const cell = document.querySelectorAll('#enemy-grid .cell')[index];
+            enemyBoard[index].hit = true;
+
+            if (isCorrect && enemyBoard[index].hasShip) {
+                cell.classList.add('hit');
+                document.getElementById('msg').innerText = "DIRECT HIT!";
+            } else {
+                cell.classList.add('miss');
+                document.getElementById('msg').innerText = isCorrect ? "Splash. Just water." : "CALIBRATION ERROR!";
+            }
+
+            continueBtn.style.display = 'block';
+            checkWin();
+        }
+
+        function closeQuestion() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            questions.shift();
+            if (gameActive) setTimeout(enemyTurn, 600);
         }
 
         function enemyTurn() {
             let index;
-            do {
-                index = Math.floor(Math.random() * 100);
-            } while (playerBoard[index].hit);
-
+            do { index = Math.floor(Math.random() * 100); } while (playerBoard[index].hit);
             playerBoard[index].hit = true;
             const cell = document.querySelectorAll('#player-grid .cell')[index];
-            
             if (playerBoard[index].hasShip) {
                 cell.classList.add('hit');
                 document.getElementById('turn-info').innerText = "Status: WE ARE UNDER ATTACK!";
-                checkWin();
             } else {
                 cell.classList.add('miss');
-                document.getElementById('turn-info').innerText = "Status: Enemy missed. Your turn.";
+                document.getElementById('turn-info').innerText = "Status: Your turn.";
             }
+            checkWin();
         }
 
         function checkWin() {
             const playerLost = playerBoard.filter(c => c.hasShip && !c.hit).length === 0;
             const enemyLost = enemyBoard.filter(c => c.hasShip && !c.hit).length === 0;
-
             if (playerLost || enemyLost) {
                 gameActive = false;
-                const result = enemyLost ? "MISSION SUCCESSFUL! ENEMY SUNK." : "MISSION FAILED. ABANDON SHIP.";
+                const result = enemyLost ? "MISSION SUCCESSFUL!" : "MISSION FAILED.";
                 document.getElementById('turn-info').innerText = result;
-                alert(result);
             }
         }
-
-        // Initialize empty grids on load
-        window.onload = () => {
-            createGrid('player-grid', []);
-            createGrid('enemy-grid', []);
-        };
     </script>
 </body>
 </html>
