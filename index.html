@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irregular Verbs: Naval Battle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --secondary: #0066ff;
+            --bg: #050b14;
+            --glass: rgba(255, 255, 255, 0.1);
+            --hit: #ff3e3e;
+            --miss: #ffffff44;
+            --ship: #00f2ffaa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: radial-gradient(circle at center, #0a192f 0%, #050b14 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* Radar Scanning Effect */
+        .radar-bg {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 150vmax;
+            height: 150vmax;
+            transform: translate(-50%, -50%);
+            background: repeating-radial-gradient(circle, transparent 0, transparent 10%, rgba(0, 242, 255, 0.05) 10.1%, transparent 10.2%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        header {
+            padding: 20px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            text-shadow: 0 0 15px var(--primary);
+        }
+
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 40px;
+            padding: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .board-wrapper {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .board-title {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 35px);
+            grid-template-rows: repeat(10, 35px);
+            gap: 2px;
+            background: rgba(0, 242, 255, 0.1);
+            border: 2px solid var(--primary);
+        }
+
+        @media (max-width: 600px) {
+            .grid {
+                grid-template-columns: repeat(10, 8vw);
+                grid-template-rows: repeat(10, 8vw);
+            }
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 25, 47, 0.8);
+            border: 0.5px solid rgba(0, 242, 255, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .cell:hover { background: rgba(0, 242, 255, 0.2); }
+
+        .cell.hit { background: rgba(255, 62, 62, 0.3); }
+        .cell.hit::after { content: '×'; color: var(--hit); font-size: 1.5rem; font-weight: bold; }
+        
+        .cell.miss { background: rgba(255, 255, 255, 0.1); }
+        .cell.miss::after { content: '•'; color: var(--miss); font-size: 1.2rem; }
+
+        .cell.ship { background: var(--ship); }
+
+        /* Modal / Question Overlay */
+        #modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 11, 20, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        .question-card {
+            background: linear-gradient(135deg, #16213e, #0f3460);
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid var(--primary);
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);
+        }
+
+        .question-card h2 { margin-bottom: 20px; color: var(--primary); }
+
+        .options-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .option-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--primary);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: var(--primary);
+            color: var(--bg);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.4);
+        }
+
+        .status-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: var(--glass);
+            text-align: center;
+            min-width: 250px;
+        }
+
+        .controls { margin-bottom: 20px; }
+
+        .btn-start {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-start:hover {
+            background: var(--primary);
+            color: var(--bg);
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        #msg { margin-top: 10px; color: var(--primary); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="radar-bg"></div>
+
+    <header>
+        <h1>Naval Battle</h1>
+        <p>A2 Irregular Verbs Edition</p>
+    </header>
+
+    <div class="controls">
+        <button class="btn-start" onclick="startGame()">Commence Mission</button>
+    </div>
+
+    <div class="game-container">
+        <div class="board-wrapper">
+            <div class="board-title">USER RADAR</div>
+            <div class="grid" id="player-grid"></div>
+        </div>
+        <div class="board-wrapper">
+            <div class="board-title">ENEMY TERRITORY</div>
+            <div class="grid" id="enemy-grid"></div>
+        </div>
+    </div>
+
+    <div class="status-panel">
+        <div id="turn-info">Status: Ready for command</div>
+        <div id="msg">Correct answers enable weapon systems.</div>
+    </div>
+
+    <div id="modal-overlay">
+        <div class="question-card" id="question-card">
+            </div>
+    </div>
+
+    <script>
+        // 50 A2 Irregular Verb Questions
+        const verbsDB = [
+            { v: "be", q: "What is the Past Simple of 'be' (plural)?", a: "were", o: ["was", "were", "been", "is"] },
+            { v: "become", q: "Past Simple of 'become'?", a: "became", o: ["become", "becoming", "became", "becomes"] },
+            { v: "begin", q: "Past Simple of 'begin'?", a: "began", o: ["begun", "began", "beginned", "begins"] },
+            { v: "break", q: "Past Simple of 'break'?", a: "broke", o: ["broken", "breaked", "brake", "broke"] },
+            { v: "bring", q: "Past Simple of 'bring'?", a: "brought", o: ["brang", "brought", "bringed", "broughten"] },
+            { v: "build", q: "Past Simple of 'build'?", a: "built", o: ["builded", "built", "builds", "building"] },
+            { v: "buy", q: "Past Simple of 'buy'?", a: "bought", o: ["bought", "buyed", "boughten", "boughts"] },
+            { v: "catch", q: "Past Simple of 'catch'?", a: "caught", o: ["catched", "caught", "caughten", "catchy"] },
+            { v: "choose", q: "Past Simple of 'choose'?", a: "chose", o: ["choosed", "chosen", "chose", "choose"] },
+            { v: "come", q: "Past Simple of 'come'?", a: "came", o: ["comed", "came", "coming", "comes"] },
+            { v: "do", q: "Past Simple of 'do'?", a: "did", o: ["done", "doed", "did", "does"] },
+            { v: "drink", q: "Past Simple of 'drink'?", a: "drank", o: ["drunk", "drank", "drinked", "drinks"] },
+            { v: "drive", q: "Past Simple of 'drive'?", a: "drove", o: ["drived", "driven", "drove", "drives"] },
+            { v: "eat", q: "Past Simple of 'eat'?", a: "ate", o: ["eaten", "eated", "ate", "eats"] },
+            { v: "fall", q: "Past Simple of 'fall'?", a: "fell", o: ["fallen", "felled", "fell", "falls"] },
+            { v: "feel", q: "Past Simple of 'feel'?", a: "felt", o: ["felt", "feeled", "feel", "feels"] },
+            { v: "find", q: "Past Simple of 'find'?", a: "found", o: ["finded", "found", "founden", "finds"] },
+            { v: "fly", q: "Past Simple of 'fly'?", a: "flew", o: ["flied", "flow", "flew", "flyed"] },
+            { v: "forget", q: "Past Simple of 'forget'?", a: "forgot", o: ["forgotten", "forgets", "forgot", "forgeted"] },
+            { v: "get", q: "Past Simple of 'get'?", a: "got", o: ["got", "getted", "gotten", "gets"] },
+            { v: "give", q: "Past Simple of 'give'?", a: "gave", o: ["given", "gave", "gived", "gives"] },
+            { v: "go", q: "Past Simple of 'go'?", a: "went", o: ["gone", "goed", "went", "goes"] },
+            { v: "have", q: "Past Simple of 'have'?", a: "had", o: ["haved", "had", "hads", "having"] },
+            { v: "hear", q: "Past Simple of 'hear'?", a: "heard", o: ["heared", "heard", "hears", "herds"] },
+            { v: "keep", q: "Past Simple of 'keep'?", a: "kept", o: ["keeped", "kept", "keeps", "keeping"] },
+            { v: "know", q: "Past Simple of 'know'?", a: "knew", o: ["known", "knowed", "knew", "knows"] },
+            { v: "leave", q: "Past Simple of 'leave'?", a: "left", o: ["leaved", "left", "leften", "leaves"] },
+            { v: "lose", q: "Past Simple of 'lose'?", a: "lost", o: ["losed", "lost", "lossen", "loses"] },
+            { v: "make", q: "Past Simple of 'make'?", a: "made", o: ["maked", "maden", "made", "makes"] },
+            { v: "meet", q: "Past Simple of 'meet'?", a: "met", o: ["met", "meeted", "meet", "meets"] },
+            { v: "pay", q: "Past Simple of 'pay'?", a: "paid", o: ["payed", "paid", "pays", "paying"] },
+            { v: "read", q: "Past Simple of 'read'?", a: "read", o: ["read", "readed", "red", "reads"] },
+            { v: "run", q: "Past Simple of 'run'?", a: "ran", o: ["runned", "run", "ran", "runs"] },
+            { v: "say", q: "Past Simple of 'say'?", a: "said", o: ["sayed", "said", "says", "saying"] },
+            { v: "see", q: "Past Simple of 'see'?", a: "saw", o: ["seen", "seed", "saw", "sees"] },
+            { v: "sell", q: "Past Simple of 'sell'?", a: "sold", o: ["selled", "sold", "solds", "selling"] },
+            { v: "send", q: "Past Simple of 'send'?", a: "sent", o: ["sent", "sended", "sends", "sending"] },
+            { v: "sing", q: "Past Simple of 'sing'?", a: "sang", o: ["sung", "sang", "singed", "sings"] },
+            { v: "sit", q: "Past Simple of 'sit'?", a: "sat", o: ["sitted", "sit", "sat", "sits"] },
+            { v: "sleep", q: "Past Simple of 'sleep'?", a: "slept", o: ["sleeped", "slept", "sleeps", "sleeping"] },
+            { v: "speak", q: "Past Simple of 'speak'?", a: "spoke", o: ["spoken", "speaked", "spoke", "speaks"] },
+            { v: "spend", q: "Past Simple of 'spend'?", a: "spent", o: ["spended", "spent", "spends", "spending"] },
+            { v: "swim", q: "Past Simple of 'swim'?", a: "swam", o: ["swum", "swam", "swimmed", "swims"] },
+            { v: "take", q: "Past Simple of 'take'?", a: "took", o: ["taken", "taked", "took", "takes"] },
+            { v: "teach", q: "Past Simple of 'teach'?", a: "taught", o: ["teached", "taught", "taughten", "teaches"] },
+            { v: "tell", q: "Past Simple of 'tell'?", a: "told", o: ["telled", "told", "tells", "telling"] },
+            { v: "think", q: "Past Simple of 'think'?", a: "thought", o: ["thinked", "thought", "thoughts", "thinking"] },
+            { v: "understand", q: "Past Simple of 'understand'?", a: "understood", o: ["understood", "understanded", "understands", "understanding"] },
+            { v: "wear", q: "Past Simple of 'wear'?", a: "wore", o: ["weared", "worn", "wore", "wears"] },
+            { v: "write", q: "Past Simple of 'write'?", a: "wrote", o: ["writed", "written", "wrote", "writes"] }
+        ];
+
+        let questions = [];
+        let playerBoard = [], enemyBoard = [];
+        let playerShips = [], enemyShips = [];
+        let gameActive = false;
+        let pendingShot = null;
+
+        // Fisher-Yates Shuffle
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function createGrid(containerId, boardArr) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            for (let i = 0; i < 100; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                if (containerId === 'enemy-grid') {
+                    cell.addEventListener('click', () => handlePlayerShot(i));
+                }
+                container.appendChild(cell);
+                boardArr[i] = { hasShip: false, hit: false };
+            }
+        }
+
+        function placeShipsRandomly(board, shipSizes) {
+            const ships = [];
+            shipSizes.forEach(size => {
+                let placed = false;
+                while (!placed) {
+                    const isHorizontal = Math.random() > 0.5;
+                    const row = Math.floor(Math.random() * 10);
+                    const col = Math.floor(Math.random() * (10 - (isHorizontal ? size : 0)));
+                    const startPos = isHorizontal ? row * 10 + col : col * 10 + row;
+                    
+                    if (!isHorizontal && row + size > 10) continue;
+
+                    let collision = false;
+                    const shipIndices = [];
+                    for (let i = 0; i < size; i++) {
+                        const idx = isHorizontal ? startPos + i : startPos + (i * 10);
+                        if (board[idx].hasShip) { collision = true; break; }
+                        shipIndices.push(idx);
+                    }
+
+                    if (!collision) {
+                        shipIndices.forEach(idx => board[idx].hasShip = true);
+                        ships.push(shipIndices);
+                        placed = true;
+                    }
+                }
+            });
+            return ships;
+        }
+
+        function renderShips(boardId, boardData) {
+            const cells = document.querySelectorAll(`#${boardId} .cell`);
+            boardData.forEach((data, i) => {
+                if (data.hasShip) cells[i].classList.add('ship');
+            });
+        }
+
+        function startGame() {
+            questions = shuffle([...verbsDB]);
+            playerBoard = Array(100).fill(null).map(() => ({hasShip: false, hit: false}));
+            enemyBoard = Array(100).fill(null).map(() => ({hasShip: false, hit: false}));
+            
+            createGrid('player-grid', playerBoard);
+            createGrid('enemy-grid', enemyBoard);
+            
+            const shipSet = [4, 3, 3, 2, 2, 1];
+            playerShips = placeShipsRandomly(playerBoard, shipSet);
+            enemyShips = placeShipsRandomly(enemyBoard, shipSet);
+            
+            renderShips('player-grid', playerBoard);
+            
+            gameActive = true;
+            document.getElementById('turn-info').innerText = "Status: Enemy detected. Select target.";
+        }
+
+        function handlePlayerShot(index) {
+            if (!gameActive || enemyBoard[index].hit) return;
+            if (questions.length === 0) {
+                alert("Out of questions! Shuffling database...");
+                questions = shuffle([...verbsDB]);
+            }
+            pendingShot = index;
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const question = questions[0]; // Use first question
+            const overlay = document.getElementById('modal-overlay');
+            const card = document.getElementById('question-card');
+            
+            overlay.style.display = 'flex';
+            
+            const shuffledOptions = shuffle([...question.o]);
+            
+            card.innerHTML = `
+                <h2>Identify the Verb</h2>
+                <p style="font-size: 1.3rem; margin-bottom: 20px;">${question.q}</p>
+                <div class="options-grid">
+                    ${shuffledOptions.map(opt => `
+                        <button class="option-btn" onclick="checkAnswer('${opt}', '${question.a}')">${opt}</button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function checkAnswer(selected, correct) {
+            const overlay = document.getElementById('modal-overlay');
+            overlay.style.display = 'none';
+            
+            const isCorrect = selected === correct;
+            const index = pendingShot;
+            const cell = document.querySelectorAll('#enemy-grid .cell')[index];
+            
+            // Remove the used question from the pool
+            questions.shift();
+
+            if (isCorrect) {
+                enemyBoard[index].hit = true;
+                if (enemyBoard[index].hasShip) {
+                    cell.classList.add('hit');
+                    document.getElementById('msg').innerText = "DIRECT HIT! Intelligence was accurate.";
+                    checkWin();
+                } else {
+                    cell.classList.add('miss');
+                    document.getElementById('msg').innerText = "Target missed. Intelligence confirmed water.";
+                }
+            } else {
+                // Automatical miss on wrong answer
+                enemyBoard[index].hit = true;
+                cell.classList.add('miss');
+                document.getElementById('msg').innerText = "CALIBRATION ERROR! The shot went wide.";
+            }
+
+            if (gameActive) setTimeout(enemyTurn, 1000);
+        }
+
+        function enemyTurn() {
+            let index;
+            do {
+                index = Math.floor(Math.random() * 100);
+            } while (playerBoard[index].hit);
+
+            playerBoard[index].hit = true;
+            const cell = document.querySelectorAll('#player-grid .cell')[index];
+            
+            if (playerBoard[index].hasShip) {
+                cell.classList.add('hit');
+                document.getElementById('turn-info').innerText = "Status: WE ARE UNDER ATTACK!";
+                checkWin();
+            } else {
+                cell.classList.add('miss');
+                document.getElementById('turn-info').innerText = "Status: Enemy missed. Your turn.";
+            }
+        }
+
+        function checkWin() {
+            const playerLost = playerBoard.filter(c => c.hasShip && !c.hit).length === 0;
+            const enemyLost = enemyBoard.filter(c => c.hasShip && !c.hit).length === 0;
+
+            if (playerLost || enemyLost) {
+                gameActive = false;
+                const result = enemyLost ? "MISSION SUCCESSFUL! ENEMY SUNK." : "MISSION FAILED. ABANDON SHIP.";
+                document.getElementById('turn-info').innerText = result;
+                alert(result);
+            }
+        }
+
+        // Initialize empty grids on load
+        window.onload = () => {
+            createGrid('player-grid', []);
+            createGrid('enemy-grid', []);
+        };
+    </script>
+</body>
+</html>
